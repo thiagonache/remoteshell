@@ -34,7 +34,6 @@ func TestProtocol(t *testing.T) {
 }
 
 func TestProtocolMismatch(t *testing.T) {
-	var listenAddr string = "127.0.0.1:8998"
 	go remoteshell.ListenAndServe(&bytes.Buffer{}, listenAddr)
 	// Sensei, do not lose your faith on me
 	time.Sleep(300 * time.Millisecond)
@@ -52,5 +51,19 @@ func TestProtocolMismatch(t *testing.T) {
 	}
 	if want != got {
 		t.Errorf("want %q, got %q", want, got)
+	}
+}
+
+func TestProtocolActionAuth(t *testing.T) {
+	commands := []string{"hello", "auth abc1234"}
+	for _, cmd := range commands {
+		want := "OK\n"
+		got, err := remoteshell.ProtocolAction(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want != got {
+			t.Errorf("want %q, got %q", want, got)
+		}
 	}
 }
