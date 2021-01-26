@@ -8,6 +8,7 @@ import (
 )
 
 func handleConnection(conn net.Conn) error {
+	defer conn.Close()
 	var rfc666 []string = []string{"hello\n", "auth\n", "command\n", "ciao\n"}
 	reader := bufio.NewReader(conn)
 	for {
@@ -44,7 +45,12 @@ func ListenAndServe(w io.Writer, listenAddr string) error {
 			return err
 		}
 		err = handleConnection(conn)
-		if err != nil {
+		switch err {
+		case io.EOF:
+			continue
+		case nil:
+			continue
+		default:
 			return err
 		}
 	}
