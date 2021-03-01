@@ -22,7 +22,7 @@ func TestProtocol(t *testing.T) {
 	}
 	defer conn.Close()
 	conn.Write([]byte("hello\n"))
-	want := "OK\n"
+	want := "hello yourself\n"
 	reader := bufio.NewReader(conn)
 	got, err := reader.ReadString('\n')
 	if err != nil {
@@ -43,7 +43,7 @@ func TestProtocolMismatch(t *testing.T) {
 	}
 	defer conn.Close()
 	conn.Write([]byte("hi\n"))
-	want := "Protocol mismatch\n"
+	want := "Protocol error!\n"
 	reader := bufio.NewReader(conn)
 	got, err := reader.ReadString('\n')
 	if err != nil {

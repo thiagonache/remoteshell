@@ -2,69 +2,66 @@ package remoteshell
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"net"
-	"regexp"
 	"strings"
+
+	history "github.com/thiagonache/go-history"
 )
 
 // I know it should not be hard coded :)
 const appToken = "abc1234"
 
-// ProtocolAction takes a string with a command of RFC666
-// and take an action depending on the command received
-func ProtocolAction(command string) (string, error) {
-	args := strings.Split(command, " ")
-	switch args[0] {
-	case "auth":
-		authCode := args[1]
-		if authCode != appToken {
-			return "", errors.New("invalid auth")
-		}
-	default:
-		return "OK\n", nil
-	}
-
-	return "OK\n", nil
-}
-
-func handleConnection(conn net.Conn) error {
+func handleConnection(conn net.Conn, r *history.Recorder) {
 	defer conn.Close()
-	var rfc666 []string = []string{"hello", "auth (\\w+)", "command \\S+", "ciao"}
-	reader := bufio.NewReader(conn)
-	for {
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		input = strings.TrimRight(input, "\n")
 
-		cmdExpected := rfc666[0]
-		rfc666 = rfc666[1:]
-		re := regexp.MustCompile(fmt.Sprintf("%s$", cmdExpected))
-		find := re.Find([]byte(input))
-		// Command expected does not match with the input
-		if len(find) == 0 {
-			conn.Write([]byte("Protocol mismatch\n"))
-			conn.Close()
-			break
-		}
-
-		output, err := ProtocolAction(input)
-		if err != nil {
-			conn.Write([]byte(fmt.Sprintf("%s\n", err.Error())))
-			conn.Close()
-			break
-		}
-		conn.Write([]byte(output))
-		if input == "ciao" {
-			conn.Close()
-			break
-		}
+	scanner := bufio.NewScanner(conn)
+	if !scanner.Scan() {
+		return
 	}
-	return nil
+	if scanner.Text() != "hello" {
+		fmt.Fprintln(conn, "Protocol error!")
+		return
+	}
+	fmt.Fprintln(conn, "hello yourself")
+	if !scanner.Scan() {
+		return
+	}
+	line := scanner.Text()
+	items := strings.Split(line, " ")
+	if len(items) < 2 {
+		fmt.Fprintln(conn, "Protocol error!")
+		return
+	}
+	if items[0] != "auth" {
+		fmt.Fprintln(conn, "Protocol error!")
+		return
+	}
+	if items[1] != appToken {
+		fmt.Fprintln(conn, "Protocol error!")
+		return
+	}
+	fmt.Fprintln(conn, "welcome to the VIP lounge")
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "ciao" {
+			fmt.Fprintln(conn, "Aloha")
+			return
+		}
+		items := strings.Split(line, " ")
+		if len(items) < 2 {
+			fmt.Fprintln(conn, "Protocol error!")
+			return
+		}
+		if items[0] != "command" {
+			fmt.Fprintln(conn, "Protocol error!")
+			return
+		}
+		fmt.Fprintf(conn, "Running command %q with args %q\n", items[1], items[2:])
+		r.Execute(strings.Join(items, " "))
+	}
 }
 
 // ListenAndServe takes an io.Writer and a listenAddr in string format.
@@ -76,19 +73,15 @@ func ListenAndServe(w io.Writer, listenAddr string) error {
 	}
 	fmt.Fprintf(w, "Listening on %s\n", ln.Addr())
 	defer ln.Close()
+	r, err := history.NewRecorder()
+	if err != nil {
+		return err
+	}
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			return err
 		}
-		err = handleConnection(conn)
-		switch err {
-		case io.EOF:
-			continue
-		case nil:
-			continue
-		default:
-			return err
-		}
+		handleConnection(conn, r)
 	}
 }
