@@ -6,7 +6,6 @@ import (
 	"net"
 	"remoteshell"
 	"testing"
-	"time"
 )
 
 var listenAddr string = "127.0.0.1:8999"
@@ -34,9 +33,6 @@ func TestProtocol(t *testing.T) {
 }
 
 func TestProtocolMismatch(t *testing.T) {
-	go remoteshell.ListenAndServe(&bytes.Buffer{}, listenAddr)
-	// Sensei, do not lose your faith on me
-	time.Sleep(300 * time.Millisecond)
 	conn, err := net.Dial("tcp4", listenAddr)
 	if err != nil {
 		t.Fatal(err)
