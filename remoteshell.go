@@ -76,7 +76,7 @@ func ListenAndServe(w io.Writer, listenAddr string) error {
 	}
 	fmt.Fprintf(w, "Listening on %s\n", ln.Addr())
 	defer ln.Close()
-	r, err := history.NewRecorder()
+	r, err := history.NewRecorder(history.WithLogPath("/tmp/history.log"))
 	if err != nil {
 		return err
 	}
