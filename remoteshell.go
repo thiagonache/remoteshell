@@ -2,18 +2,17 @@ package remoteshell
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 
 	history "github.com/thiagonache/go-history"
 )
 
-// I know it should not be hard coded :)
-const appToken = "abc1234"
-
-func handleConnection(conn net.Conn, r *history.Recorder) {
+func handleConnection(conn net.Conn, r *history.Recorder, appToken string) {
 	defer conn.Close()
 
 	scanner := bufio.NewScanner(conn)
@@ -67,6 +66,10 @@ func handleConnection(conn net.Conn, r *history.Recorder) {
 // ListenAndServe takes an io.Writer and a listenAddr in string format.
 // It does create a listen, wait for new connection and handles it.
 func ListenAndServe(w io.Writer, listenAddr string) error {
+	appToken := os.Getenv("REMOTESHELL_APP_TOKEN")
+	if appToken == "" {
+		return errors.New("REMOTESHELL_APP_TOKEN env var not found")
+	}
 	ln, err := net.Listen("tcp4", listenAddr)
 	if err != nil {
 		return err
@@ -82,6 +85,6 @@ func ListenAndServe(w io.Writer, listenAddr string) error {
 		if err != nil {
 			return err
 		}
-		handleConnection(conn, r)
+		handleConnection(conn, r, appToken)
 	}
 }
